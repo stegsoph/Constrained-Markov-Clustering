@@ -1,1 +1,1 @@
-# Constrained-Markov-Aggregation-Clustering
+# Constrained-Markov-Clustering
