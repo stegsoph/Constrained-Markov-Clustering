@@ -1,7 +1,5 @@
 import numpy as np
 import random
-# np.random.seed(2)
-
 # ----------------------------------------------------------------------------
 # This code is contributed by mohit kumar 29
 
@@ -28,35 +26,31 @@ def greedyColoring(adj_must, adj, V, M):
     # Assign the first color to first vertex
     result[0] = 0
 
+    # A temporary array to store the available colors.
+    # True value of available[cr] would mean that the
+    # color cr is assigned to one of its adjacent vertices
+    available = [False] * V
+
     # Assign colors to remaining V-1 vertices
     for u in range(1, V):
-        
+                    
         idx_cannot = []
         idx_cannot = [adj[i] for i in adj_must[u]]
 
-        states_temp = []
         # Process all adjacent vertices and
         # flag their colors as unavailable
         for i_can in idx_cannot:
             for i in i_can:
-                states_temp.append(result[i])
+                if (result[i] != -1):
+                    available[result[i]] = True
 
-        # all the states of points connected with cannot-link constraints
-        states_temp = [x for x in states_temp if x >= 0]
-        states_vec = np.arange(0,M)
-
-        # find first empty state
-        cr = -1
-        for state in states_vec:
-            if state not in states_temp:
-                cr = state
+        # Find the first available color
+        cr = 0
+        while cr < V:
+            if (available[cr] is False):
                 break
-            
-        # if no state is available, select the one with least frequency
-        if cr == -1:
-            print("Coloring with M colors not possible")
-            cr = np.bincount(states_temp).argmin()
-                    
+            cr += 1
+
         # Assign the found color
         for i in np.array(adj_must[u]).astype(int):
             result[i] = cr
@@ -66,30 +60,33 @@ def greedyColoring(adj_must, adj, V, M):
         index_must = np.array(adj_must[u]).astype(int)
 
         flag_empty = True
-        
-        for idx_must in index_must:
-            if len(np.array(adj, dtype=object)[idx_must]) != 0:
-                flag_empty = False
+
+        if np.array(adj, dtype=object)[index_must].ravel().size != 0:
+            flag_empty = False
 
         if flag_empty:
             for i in np.array(adj_must[u]).astype(int):
                 result[i] = random_num
 
+        # Reset the values back to false
+        # for the next iteration
+        for i_can in idx_cannot:
+            for i in i_can:
+                if (result[i] != -1):
+                    available[result[i]] = True
 
-    return result
+    return result, adj
 
 
 def create_graph(M_graph, N_node):
     '''
     creates a list from an array with constraints
-
     Parameters
     ----------
     M_graph: array
         contains pairwise constraints, not necessarily all pairwise constraints
     N_node: int
         total number of samples
-
     Returns
     -------
     g1: list
@@ -105,7 +102,6 @@ def create_graph(M_graph, N_node):
 def checkConstraints(g1_must, g1_cannot, V):
     '''
     checks if a certain partition fulfills all must-&-cannot-link constraints
-
     Parameters
     ----------
     g1_must: list
@@ -114,7 +110,6 @@ def checkConstraints(g1_must, g1_cannot, V):
         cannot-link constraits
     V: array
         partition to be analyzed
-
     Returns
     -------
     is_okay: bool
@@ -143,7 +138,6 @@ def checkConstraints(g1_must, g1_cannot, V):
 def possible_partition_greedy(g1_must, g1_cannot, N_node, M):
     '''
     creates a possible partition given some constraints
-
     Parameters
     ----------
     g1_must: list
@@ -154,20 +148,19 @@ def possible_partition_greedy(g1_must, g1_cannot, N_node, M):
         total number of samples
     M: int
         number of clusters
-
     Returns
     -------
     result_M: array
         possible partition
     '''
-    result = greedyColoring(g1_must, g1_cannot, N_node, M)
+    (result, adj) = greedyColoring(g1_must, g1_cannot, N_node, M)
 
     result_M = np.array(result)
 
     # if the partition is not possible with M clusters, give a warning and
     # assign the states >= M with a random state in [0,M-1]
     if np.any(result_M >= M):
-        print("Coloring with M colors not possible")
+        #print("Coloring with M colors not possible")
         result_M[result_M >= M] = np.random.randint(M)
 
     return result_M

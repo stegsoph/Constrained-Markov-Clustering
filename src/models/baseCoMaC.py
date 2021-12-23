@@ -1,8 +1,9 @@
 import numpy as np
 import math
+import random
 import sys
 from scipy.sparse import csr_matrix
-
+from utils.k_coloring_greedy_v2 import create_graph
 
 class baseCoMaC():
     
@@ -122,4 +123,96 @@ class baseCoMaC():
                     M_cannot = np.append(M_cannot, [[TruePartition[i, 0], TruePartition[j, 0]]], axis=0)
 
         return M_must, M_cannot
+        
+           
+    def sample_from_k_classes(self, labels, labels_enum, percentage, k):
+        
+        # number of samples needed to achieve 30%
+        number_sample_min30 = np.round(labels_enum.shape[0]*0.3).astype(int)
+        number_sample = np.round(labels_enum.shape[0]*percentage).astype(int)
+        # number of elements in each class
+        sum_elements = np.array([np.sum(labels_enum[:,1] == i) for i in range(self.M)])
+        # randomly choose class indices
+        cluster_idx_sampling = np.unique(random.sample(range(self.M),
+                                         k = k)).astype(int)
+        N_max_iter = 0
+        while (np.sum(sum_elements[cluster_idx_sampling]) < number_sample_min30):
+            cluster_idx_sampling = np.unique(random.choices(range(self.M),
+                                             k=ClassLabels))
+            N_max_iter += 1
+            print('Repeat: not enough samples in the clusters')
+            if N_max_iter > 20:
+                # two largest clusters
+                cluster_idx_sampling = np.argpartition(sum_elements, -k)[-k:]
+                print("Stopped: not enough samples in the clusters")
+                break
+
+        labels_idx = np.array([(labels == x) for x in cluster_idx_sampling]).any(axis=0)
+        labels_temp = labels_enum[labels_idx, :]
+        labels_red_enum = self.randomSampling(labels_temp, number_sample=number_sample)
+        return labels_red_enum
+    
+        
+    def constraints(self, X, labels, percentage=1, number_sample=None,
+                    wrong_percentage=0, ClassLabels='All'):
+        
+        labels_enum = np.array([np.arange(X.shape[0]), labels]).T
+
+        #-------------------------------------------------------------------------------------
+        # Randomly sample from the labels
+        
+        if ClassLabels == 'All':
+            labels_red_enum = self.randomSampling(labels_enum, percentage=percentage, number_sample=number_sample)
+        else: 
+            labels_red_enum = self.sample_from_k_classes(labels, labels_enum, percentage, ClassLabels)
+               
+        #-------------------------------------------------------------------------------------
+        # Add some wrong labels
+        
+        labels_wrong = self.randomSampling(labels_red_enum, percentage=wrong_percentage)
+#         print(labels_red_enum)
+        
+        index_list = np.arange(self.M)
+        for i in range(len(labels_wrong)):
+            K = labels_wrong[i, 1] # true label for data point x_i
+            # select another label which is wrong
+            res = random.choice([ele for ele in index_list if ele != K])
+            # overwrite the true label with the wrong one
+            labels_red_enum[labels_red_enum[:, 0] == labels_wrong[i, 0], 1] = res
+            
+#         print(labels_red_enum)
+        
+        #-------------------------------------------------------------------------------------
+        # Generate the pairwise constraints
+        
+        M_must, M_cannot = self.pairwiseConstraints(labels_red_enum)
+        
+        #-------------------------------------------------------------------------------------
+        # Initialization if we do or do not have cannot-link-constraints
+        
+        if M_cannot is None:
+            adj_cannot = [[]]*len(X)  # empty list of length A (number of samples)
+        else:
+            # create graph fullfilling the constraints
+            adj_cannot = create_graph(M_cannot, len(X))
+            # adj_cannot = create_graph([], len(X))
+
+        #-------------------------------------------------------------------------------------
+        # Initialization if we do or do not have must-link-constraints
+        
+        if M_must is None:
+            # list where row i has value i
+            adj_must = [[i] for i in range(len(X))]
+        else:
+            # create graph fullfilling the constraints
+            temp_list_graph = create_graph(M_must, len(X))
+            # list where row i has value i
+            temp_list = [[i] for i in range(len(X))]
+            # concatenate both lists
+            adj_must = [a + b for a, b in zip(temp_list, temp_list_graph)]
+            
+        self.adj_must = adj_must
+        self.adj_cannot = adj_cannot
+        self.M_must = M_must
+        self.M_cannot = M_cannot
         

@@ -1,6 +1,6 @@
 from models.baseCoMaC import baseCoMaC
-from utils.k_coloring_greedy_v2 import (possible_partition_greedy,
-                                        create_graph, checkConstraints)
+from utils.k_coloring_greedy_v1 import (possible_partition_greedy,checkConstraints)
+
 import numpy as np
 import math
 from scipy.sparse import csr_matrix
@@ -16,36 +16,6 @@ class CoMaC(baseCoMaC):
         self.M = M
         self.restarts = restarts
         
-    def constraints(self, X, labels, percentage=1, number_sample=None):
-        
-        labels_true_enum = np.array([np.arange(X.shape[0]), labels]).T
-        labels_red_enum = self.randomSampling(labels_true_enum, percentage=percentage, number_sample=number_sample)
-        M_must, M_cannot = self.pairwiseConstraints(labels_red_enum)
-        
-        # initialization if we do or do not have cannot-link-constraints
-        if M_cannot is None:
-            adj_cannot = [[]]*len(X)  # empty list of length A (number of samples)
-        else:
-            # create graph fullfilling the constraints
-            adj_cannot = create_graph(M_cannot, len(X))
-            # adj_cannot = create_graph([], len(X))
-
-        # initialization if we do or do not have must-link-constraints
-        if M_must is None:
-            # list where row i has value i
-            adj_must = [[i] for i in range(len(X))]
-        else:
-            # create graph fullfilling the constraints
-            temp_list_graph = create_graph(M_must, len(X))
-            # list where row i has value i
-            temp_list = [[i] for i in range(len(X))]
-            # concatenate both lists
-            adj_must = [a + b for a, b in zip(temp_list, temp_list_graph)]
-            
-        self.adj_must = adj_must
-        self.adj_cannot = adj_cannot
-        self.M_must = M_must
-        self.M_cannot = M_cannot
         
     def cluster_seq(self, X, beta=0.5, g_init=None, max_iter=25):
                 
@@ -165,14 +135,14 @@ class CoMaC(baseCoMaC):
                     # iterate only over "free" cluster states
                     for j in vector_states:
                         V[index_must, j] = 1
-                        '''
+                        
                         Q_V = csr_matrix(V)
                         Ponered = csr_matrix.dot(P, Q_V)
                         Ptwored = csr_matrix.dot(Q_V.T,Ponered)
                         '''
                         Ponered = np.dot(P, V)
                         Ptwored = np.dot(V.T, Ponered)
-                        
+                        '''
                         I1 = self.mutualInformation(Ptwored)
                         I3 = self.mutualInformation(Ponered)
 
@@ -184,14 +154,14 @@ class CoMaC(baseCoMaC):
                     V[index_must, index] = 1
 
                 # -----------------------------------------------------------------
-                '''
+                
                 Q_V = csr_matrix(V)
                 Ponered = csr_matrix.dot(P, Q_V)
                 Ptwored = csr_matrix.dot(Q_V.T,Ponered)
                 '''
                 Ponered = np.dot(P, V)
                 Ptwored = np.dot(V.T, Ponered)
-                
+                '''
                 I1 = self.mutualInformation(Ptwored)
                 I3 = self.mutualInformation(Ponered)
                 new_cost = - (factor_1*I3 - factor_2*I1)
