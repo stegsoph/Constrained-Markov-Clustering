@@ -30,7 +30,6 @@ def save_results(iteration, dataset_str, beta_vec, knns, restarts,
     wrong_percentage_list = [wrong_percentage]*N_beta*2
 
 
-#     my_file = Path("data","results",csv_string)
     my_file = Path("..","data","results",csv_string)
     if not my_file.is_file():
         print("CSV-File does not exist!")

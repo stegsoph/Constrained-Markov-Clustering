@@ -170,7 +170,6 @@ class baseCoMaC():
         # Add some wrong labels
         
         labels_wrong = self.randomSampling(labels_red_enum, percentage=wrong_percentage)
-#         print(labels_red_enum)
         
         index_list = np.arange(self.M)
         for i in range(len(labels_wrong)):
@@ -179,9 +178,7 @@ class baseCoMaC():
             res = random.choice([ele for ele in index_list if ele != K])
             # overwrite the true label with the wrong one
             labels_red_enum[labels_red_enum[:, 0] == labels_wrong[i, 0], 1] = res
-            
-#         print(labels_red_enum)
-        
+                    
         #-------------------------------------------------------------------------------------
         # Generate the pairwise constraints
         
