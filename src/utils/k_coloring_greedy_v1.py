@@ -73,7 +73,7 @@ def greedyColoring(adj_must, adj, V, M):
         for i_can in idx_cannot:
             for i in i_can:
                 if (result[i] != -1):
-                    available[result[i]] = True
+                    available[result[i]] = False
 
     return result, adj
 

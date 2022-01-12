@@ -138,7 +138,7 @@ class baseCoMaC():
         N_max_iter = 0
         while (np.sum(sum_elements[cluster_idx_sampling]) < number_sample_min30):
             cluster_idx_sampling = np.unique(random.choices(range(self.M),
-                                             k=ClassLabels))
+                                             k=k))
             N_max_iter += 1
             print('Repeat: not enough samples in the clusters')
             if N_max_iter > 20:
