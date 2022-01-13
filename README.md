@@ -15,6 +15,7 @@ semi-supervised case. Instantiating CoMaC for certain parameter
 settings further generalizes two previous information-theoretic
 objectives for unsupervised clustering. Our results indicate that
 CoMaC is competitive with the state-of-the-art.
+(https://arxiv.org/abs/2112.09397)
 
 ## Requirements
 
