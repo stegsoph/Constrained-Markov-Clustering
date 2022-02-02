@@ -39,32 +39,3 @@ class dataGen(baseCoMaC):
 
         return P, V_true, X
 
-
-    def gen_rand_constraints(labels_true, percentage=1, number_sample=None):
-
-        N_samples = len(labels_true)
-        l1, l2 = np.arange(N_samples), np.arange(N_samples)
-        output = list(product(l1, l2))
-        output = np.array(output)
-
-        delete_rows =  []
-        for i in range(output.shape[0]): 
-            if output[i][0]==output[i][1]:
-                delete_rows.append(i)
-        output = np.delete(output, delete_rows, axis=0)
-        output_sampled = randomSampling(output, percentage=percentage, number_sample=number_sample)
-
-        M_must = np.empty((0, 2))    # initialization
-        M_cannot = np.empty((0, 2))  # initialization
-
-        for i in range(output_sampled.shape[0]):
-            idx_0 = output_sampled[i][0]
-            idx_1 = output_sampled[i][1]
-            label_0 = labels_true[idx_0]   # get cluster index
-            label_1 = labels_true[idx_1]   # get cluster index
-            if label_0 == label_1:
-                M_must = np.append(M_must, [[idx_0, idx_1]], axis=0)
-            else:
-                M_cannot = np.append(M_cannot, [[idx_0, idx_1]], axis=0)
-
-        return M_must, M_cannot

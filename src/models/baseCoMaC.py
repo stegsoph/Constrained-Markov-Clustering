@@ -3,7 +3,11 @@ import math
 import random
 import sys
 from scipy.sparse import csr_matrix
+from itertools import product
+
 from utils.k_coloring_greedy_v2 import create_graph
+from utils.connected_graph import findConnectedComp
+
 
 class baseCoMaC():
     
@@ -152,6 +156,87 @@ class baseCoMaC():
         labels_red_enum = self.randomSampling(labels_temp, number_sample=number_sample)
         return labels_red_enum
     
+    def gen_rand_constraints(self, labels, percentage=1, number_sample=None):
+        '''
+        Randomly select pairs of data points - based on their class label, 
+        they generate cannot (different labels) or must (same label) constraints
+        '''
+
+        N_samples = len(labels)
+        l1, l2 = np.arange(N_samples), np.arange(N_samples)
+        output = list(product(l1, l2))
+        output = np.array(output)
+
+        delete_rows =  []
+        for i in range(output.shape[0]): 
+            if output[i][0]==output[i][1]:
+                delete_rows.append(i)
+        output = np.delete(output, delete_rows, axis=0)
+        
+        if number_sample == None:
+            number_sample = np.round(len(labels)*percentage).astype(int)
+        output_sampled = self.randomSampling(output, number_sample=number_sample)
+
+        M_must = np.empty((0, 2))    # initialization
+        M_cannot = np.empty((0, 2))  # initialization
+
+        for i in range(output_sampled.shape[0]):
+            idx_0 = output_sampled[i][0]
+            idx_1 = output_sampled[i][1]
+            label_0 = labels[idx_0]   # get cluster index
+            label_1 = labels[idx_1]   # get cluster index
+            if label_0 == label_1:
+                M_must = np.append(M_must, [[idx_0, idx_1]], axis=0)
+            else:
+                M_cannot = np.append(M_cannot, [[idx_0, idx_1]], axis=0)
+
+        return M_must, M_cannot
+    
+    def constraint_graph(self, X, M_must, M_cannot):
+        #-------------------------------------------------------------------------------------
+        # Initialization if we do or do not have cannot-link-constraints
+        
+        if M_cannot is None:
+            adj_cannot = [[]]*len(X)  # empty list of length A (number of samples)
+        else:
+            # create graph fullfilling the constraints
+            adj_cannot = create_graph(M_cannot, len(X))
+
+        #-------------------------------------------------------------------------------------
+        # Initialization if we do or do not have must-link-constraints
+        
+        if M_must is None:
+            # list where row i has value i
+            adj_must = [[i] for i in range(len(X))]
+        else:
+            # create graph fullfilling the constraints
+            temp_list_graph = create_graph(M_must, len(X))
+            # list where row i has value i
+            temp_list = [[i] for i in range(len(X))]
+            # concatenate both lists
+            adj_must = [a + b for a, b in zip(temp_list, temp_list_graph)]
+            
+        self.adj_must = adj_must
+        self.adj_cannot = adj_cannot
+        self.M_must = M_must
+        self.M_cannot = M_cannot
+    
+    def random_constraints(self, X, labels, percentage=1, number_sample=None,
+                           flag_no_cannot=False, flag_connected=True):
+        
+        (M_must, M_cannot) = self.gen_rand_constraints(labels, percentage=percentage, number_sample=number_sample)
+        M_must = M_must.astype(int)
+        M_cannot = M_cannot.astype(int)
+        if flag_no_cannot:
+            M_cannot = []           
+            
+        self.constraint_graph(X, M_must, M_cannot)
+        
+        if flag_connected:
+            adj_must_connected = findConnectedComp(M_must.astype(int), len(X))
+            added_elem = np.sum( [[-len(self.adj_must[i]), len(adj_must_connected[i])] for i in range(len(X))]  )
+            print('Number of additional constraints due to constraint propagation: ', added_elem)
+            self.adj_must = adj_must_connected
         
     def constraints(self, X, labels, percentage=1, number_sample=None,
                     wrong_percentage=0, ClassLabels='All'):
@@ -184,32 +269,5 @@ class baseCoMaC():
         
         M_must, M_cannot = self.pairwiseConstraints(labels_red_enum)
         
-        #-------------------------------------------------------------------------------------
-        # Initialization if we do or do not have cannot-link-constraints
-        
-        if M_cannot is None:
-            adj_cannot = [[]]*len(X)  # empty list of length A (number of samples)
-        else:
-            # create graph fullfilling the constraints
-            adj_cannot = create_graph(M_cannot, len(X))
-            # adj_cannot = create_graph([], len(X))
-
-        #-------------------------------------------------------------------------------------
-        # Initialization if we do or do not have must-link-constraints
-        
-        if M_must is None:
-            # list where row i has value i
-            adj_must = [[i] for i in range(len(X))]
-        else:
-            # create graph fullfilling the constraints
-            temp_list_graph = create_graph(M_must, len(X))
-            # list where row i has value i
-            temp_list = [[i] for i in range(len(X))]
-            # concatenate both lists
-            adj_must = [a + b for a, b in zip(temp_list, temp_list_graph)]
-            
-        self.adj_must = adj_must
-        self.adj_cannot = adj_cannot
-        self.M_must = M_must
-        self.M_cannot = M_cannot
+        self.constraint_graph(X, M_must, M_cannot)
         
